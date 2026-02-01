@@ -34,7 +34,7 @@ export class VaultBackend extends CliBackend {
   async set(key: string, value: string): Promise<void> {
     const path = this.secretPath(key);
     try {
-      await runCommand('vault', ['kv', 'put', path, `value=${value}`], { env: this.envVars() });
+      await runCommand('vault', ['kv', 'put', path, '-'], { env: this.envVars(), input: JSON.stringify({ value }) });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Vault set failed for "${key}": ${message}`);

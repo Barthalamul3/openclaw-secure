@@ -2,7 +2,18 @@
  * Dot-path utilities for nested JSON access.
  */
 
+const DANGEROUS_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function validatePath(path: string): void {
+  for (const seg of path.split('.')) {
+    if (DANGEROUS_SEGMENTS.has(seg)) {
+      throw new Error(`Unsafe path segment: "${seg}"`);
+    }
+  }
+}
+
 export function getByPath(obj: Record<string, unknown>, path: string): unknown {
+  validatePath(path);
   const segments = path.split('.');
   let current: unknown = obj;
   for (const segment of segments) {
@@ -19,6 +30,7 @@ export function setByPath(
   path: string,
   value: unknown,
 ): Record<string, unknown> {
+  validatePath(path);
   const result = structuredClone(obj);
   const segments = path.split('.');
   let current: Record<string, unknown> = result;
@@ -39,5 +51,6 @@ export function setByPath(
 }
 
 export function hasPath(obj: Record<string, unknown>, path: string): boolean {
+  validatePath(path);
   return getByPath(obj, path) !== undefined;
 }

@@ -5,8 +5,8 @@
  * ensuring secrets are injected at boot and scrubbed after startup.
  */
 
-import { execSync } from 'node:child_process';
-import { existsSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { chmodSync, existsSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -177,6 +177,7 @@ export function readPlist(path: string): PlistConfig {
 export function backupPlist(path: string): string {
   const backupPath = `${path}.bak`;
   copyFileSync(path, backupPath);
+  chmodSync(backupPath, 0o600);
   return backupPath;
 }
 
@@ -185,7 +186,7 @@ export function backupPlist(path: string): string {
  */
 function resolveOpenclawBinary(): string {
   try {
-    return execSync('which openclaw-secure', { encoding: 'utf-8' }).trim();
+    return execFileSync('/usr/bin/which', ['openclaw-secure'], { encoding: 'utf-8' }).trim();
   } catch {
     // Fallback: resolve from this package's bin entry
     const pkgBin = resolve(import.meta.dirname, '..', 'dist', 'cli.js');
@@ -209,11 +210,11 @@ function resolveNodeBinary(): string {
  */
 function reloadLaunchAgent(plistPath: string): void {
   try {
-    execSync(`launchctl unload "${plistPath}"`, { stdio: 'pipe' });
+    execFileSync('launchctl', ['unload', plistPath], { stdio: 'pipe' });
   } catch {
     // May fail if not currently loaded — that's fine
   }
-  execSync(`launchctl load "${plistPath}"`, { stdio: 'pipe' });
+  execFileSync('launchctl', ['load', plistPath], { stdio: 'pipe' });
 }
 
 /**
@@ -285,7 +286,7 @@ export function uninstallSecure(): {
     const nodePath = resolveNodeBinary();
     let clawdbotPath: string;
     try {
-      const clawdbotBin = execSync('which clawdbot', { encoding: 'utf-8' }).trim();
+      const clawdbotBin = execFileSync('/usr/bin/which', ['clawdbot'], { encoding: 'utf-8' }).trim();
       // The actual entry point is usually the dist/entry.js resolved from the bin
       clawdbotPath = clawdbotBin;
     } catch {

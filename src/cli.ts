@@ -251,6 +251,13 @@ function waitForGateway(timeoutMs: number): Promise<void> {
 async function cmdStart(configPath: string, secretMap: SecretMap, backend: SecretBackend, timeoutMs: number): Promise<void> {
   console.log(bold(`\n🚀 Secure gateway start (${cyan(backend.name)} backend)...\n`));
 
+  const cleanup = async () => {
+    try { await scrubKeys(configPath, secretMap); } catch { /* best-effort */ }
+  };
+  const onSignal = () => { cleanup().finally(() => process.exit(1)); };
+  process.on('SIGINT', onSignal);
+  process.on('SIGTERM', onSignal);
+
   console.log(`  ${dim('→')} Restoring keys from ${backend.name}...`);
   await restoreKeys(configPath, secretMap, backend);
   console.log(`  ${green('✔')} Config populated with real keys`);
@@ -267,6 +274,10 @@ async function cmdStart(configPath: string, secretMap: SecretMap, backend: Secre
   console.log(`  ${dim('→')} Scrubbing config...`);
   await scrubKeys(configPath, secretMap);
   console.log(`  ${green('✔')} Config scrubbed — secrets removed\n`);
+
+  process.off('SIGINT', onSignal);
+  process.off('SIGTERM', onSignal);
+
   console.log(green('✔ Gateway started securely.\n'));
 }
 

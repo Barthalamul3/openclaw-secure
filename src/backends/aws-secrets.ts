@@ -31,9 +31,9 @@ export class AwsSecretsBackend extends CliBackend {
   async set(key: string, value: string): Promise<void> {
     const secretName = this.prefixedPath(key);
     try {
-      await runCommand('aws', ['secretsmanager', 'update-secret', '--secret-id', secretName, '--secret-string', value, ...this.regionArgs()]);
+      await runCommand('aws', ['secretsmanager', 'update-secret', '--secret-id', secretName, '--secret-string', 'file:///dev/stdin', ...this.regionArgs()], { input: value });
     } catch {
-      await runCommand('aws', ['secretsmanager', 'create-secret', '--name', secretName, '--secret-string', value, ...this.regionArgs()]);
+      await runCommand('aws', ['secretsmanager', 'create-secret', '--name', secretName, '--secret-string', 'file:///dev/stdin', ...this.regionArgs()], { input: value });
     }
   }
 

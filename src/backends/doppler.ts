@@ -38,7 +38,7 @@ export class DopplerBackend extends CliBackend {
   async set(key: string, value: string): Promise<void> {
     const dKey = this.dopplerKey(key);
     try {
-      await runCommand('doppler', ['secrets', 'set', dKey, value, ...this.projectArgs()]);
+      await runCommand('doppler', ['secrets', 'set', dKey, '--raw', ...this.projectArgs()], { input: value });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Doppler set failed for "${key}": ${message}`);

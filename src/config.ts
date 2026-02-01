@@ -50,6 +50,7 @@ export async function backupConfig(configPath: string): Promise<string> {
   const backupPath = `${fullPath}.bak`;
   try {
     await copyFile(fullPath, backupPath);
+    await chmod(backupPath, 0o600);
     return backupPath;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
