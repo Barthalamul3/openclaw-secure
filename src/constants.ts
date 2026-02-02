@@ -1,6 +1,6 @@
 import type { SecretMap } from './types.js';
 
-export const KEYCHAIN_PLACEHOLDER = '[YOU_ARE_DUMB';
+export const KEYCHAIN_PLACEHOLDER = '[STORED_IN_KEYCHAIN]';
 export const SERVICE_PREFIX = 'openclaw';
 export const KEYCHAIN_ACCOUNT = 'openclaw';
 export const DEFAULT_CONFIG_PATH = '~/.openclaw/openclaw.json';
@@ -16,6 +16,7 @@ export const DEFAULT_SECRET_MAP: SecretMap = [
   { configPath: 'tools.web.search.apiKey', keychainName: 'web-search-api-key' },
   { configPath: 'plugins.entries.carapace.config.promptIntelApiKey', keychainName: 'carapace-prompt-intel-api-key' },
   { configPath: 'plugins.entries.carapace.config.llmApiKey', keychainName: 'carapace-llm-api-key' },
+  { configPath: 'discord.token', keychainName: 'discord-bot-token' },
 ];
 
 export function serviceName(keychainName: string): string {
