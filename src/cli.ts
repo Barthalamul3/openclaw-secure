@@ -5,9 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createBackend } from './backends/index.js';
-import { readConfig, writeConfig } from './config.js';
 import { scrubKeys, checkKeys, storeKeys } from './index.js';
-import { setByPath } from './paths.js';
 import {
   DEFAULT_CONFIG_PATH,
   DEFAULT_TIMEOUT_MS,
@@ -96,25 +94,20 @@ program.command('start')
       process.exit(1);
     }
 
-    const config = await readConfig(configPath);
-    const envUpdates: Record<string, string> = {};
-    let count = 0;
-    
     console.log(`\n🚀 Secure gateway start (${backendName} backend)...`);
-    console.log(`  → Fetching keys into environment...`);
-
+    
+    // 1. Fetch keys & build env map
+    const envUpdates: Record<string, string> = {};
     for (const entry of DEFAULT_SECRET_MAP) {
       const val = await backend.get(entry.keychainName);
       if (val) {
         const envName = `OPENCLAW_SECURE_${entry.keychainName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
         envUpdates[envName] = val;
-        setByPath(config, entry.configPath, `\${${envName}}`);
-        count++;
       }
     }
     
-    await writeConfig(configPath, config);
-    console.log(`  ✔ Config updated with \${VAR} references (${count} keys)`);
+    // 2. Scrub Config (Writes ${VAR} using our new logic)
+    await scrubKeys(configPath, DEFAULT_SECRET_MAP);
 
     console.log(`  → Starting gateway...`);
     const child = spawn(DEFAULT_GATEWAY_COMMAND, {
@@ -130,23 +123,15 @@ program.command('start')
       console.log('  ✔ Gateway is healthy');
     } else {
       console.error('  ❌ Gateway health check timed out');
-      await scrubKeys(configPath, DEFAULT_SECRET_MAP);
       child.kill();
       process.exit(1);
     }
     
-    let cleaned = false;
+    // Cleanup on exit: Ensures the file stays in ${VAR} state
     const cleanup = async () => {
-      if (cleaned) return;
-      cleaned = true;
-      console.log('\nStopping gateway and scrubbing config...');
+      console.log('\nStopping gateway...');
       child.kill();
-      try {
-        await scrubKeys(configPath, DEFAULT_SECRET_MAP);
-        console.log('  ✔ Config scrubbed');
-      } catch (e) {
-        console.error('Scrub failed:', e);
-      }
+      try { await scrubKeys(configPath, DEFAULT_SECRET_MAP); } catch {}
     };
     
     process.on('SIGINT', () => cleanup().then(() => process.exit(0)));

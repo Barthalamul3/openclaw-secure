@@ -1,10 +1,9 @@
-/**
- * openclaw-secure — Secure Clawdbot API keys with a pluggable secret backend.
- *
- * @packageDocumentation
- */
+import { readConfig, writeConfig } from './config.js';
+import { setByPath, getByPath } from './paths.js';
+import type { SecretMap, KeyCheckResult, StoreResult } from './types.js';
+import type { SecretBackend } from './backends/types.js';
 
-// Backend system
+// Exports for other modules
 export {
   createBackend, BACKEND_NAMES,
   KeychainBackend, OnePasswordBackend, BitwardenBackend, LastPassBackend,
@@ -13,19 +12,12 @@ export {
 } from './backends/index.js';
 export type { SecretBackend, BackendOptions, BackendName } from './backends/index.js';
 
-// Config & path utilities
 export { readConfig, writeConfig, backupConfig, expandPath } from './config.js';
 export { getByPath, setByPath, hasPath } from './paths.js';
-
-// Preferences
 export { loadPreferences, PREFERENCES_PATH } from './preferences.js';
 export type { Preferences } from './preferences.js';
-
-// LaunchAgent management
 export { findPlist, readPlist, backupPlist, installSecure, uninstallSecure } from './launchagent.js';
 export type { PlistConfig, InstallOptions } from './launchagent.js';
-
-// Constants
 export {
   KEYCHAIN_PLACEHOLDER,
   DEFAULT_CONFIG_PATH,
@@ -33,25 +25,10 @@ export {
   DEFAULT_TIMEOUT_MS,
   DEFAULT_BACKEND,
 } from './constants.js';
-
-// Types
-export type {
-  SecretEntry,
-  SecretMap,
-  KeyCheckResult,
-  StoreResult,
-  StartOptions,
-} from './types.js';
-
-import type { SecretBackend } from './backends/index.js';
-import { readConfig, writeConfig } from './config.js';
-import { getByPath, setByPath } from './paths.js';
-import { KEYCHAIN_PLACEHOLDER } from './constants.js';
-import type { SecretMap, KeyCheckResult, StoreResult } from './types.js';
+export type { SecretEntry, SecretMap, KeyCheckResult, StoreResult, StartOptions } from './types.js';
 
 /**
- * Store all secret values from the config into the backend,
- * then replace them with placeholder values in the config file.
+ * Store keys: Reads config, saves to backend, writes Env Var reference to disk.
  */
 export async function storeKeys(
   configPath: string,
@@ -63,52 +40,22 @@ export async function storeKeys(
 
   for (const entry of secretMap) {
     const value = getByPath(config, entry.configPath);
-
-    if (value === undefined || value === null) {
-      results.push({ keychainName: entry.keychainName, configPath: entry.configPath, stored: false, skipped: true, reason: 'Value not found in config' });
-      continue;
+    // Skip if it's already an env var reference or placeholder
+    if (typeof value === 'string' && !value.startsWith('${') && !value.startsWith('[')) {
+      await backend.set(entry.keychainName, value);
+      
+      // Update config with Env Var Reference
+      const envName = `OPENCLAW_SECURE_${entry.keychainName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+      config = setByPath(config, entry.configPath, `\${${envName}}`);
+      
+      results.push({ keychainName: entry.keychainName, configPath: entry.configPath, stored: true, skipped: false });
     }
-    if (typeof value !== 'string') {
-      results.push({ keychainName: entry.keychainName, configPath: entry.configPath, stored: false, skipped: true, reason: 'Value is not a string' });
-      continue;
-    }
-    if (value === KEYCHAIN_PLACEHOLDER) {
-      results.push({ keychainName: entry.keychainName, configPath: entry.configPath, stored: false, skipped: true, reason: 'Already stored in backend' });
-      continue;
-    }
-
-    await backend.set(entry.keychainName, value);
-    config = setByPath(config, entry.configPath, KEYCHAIN_PLACEHOLDER);
-    results.push({ keychainName: entry.keychainName, configPath: entry.configPath, stored: true, skipped: false });
   }
 
   await writeConfig(configPath, config);
   return results;
 }
 
-/** Pull keys from the backend and write real values back into config. */
-export async function restoreKeys(configPath: string, secretMap: SecretMap, backend: SecretBackend): Promise<void> {
-  let config = await readConfig(configPath);
-  for (const entry of secretMap) {
-    const value = await backend.get(entry.keychainName);
-    if (value !== null) config = setByPath(config, entry.configPath, value);
-  }
-  await writeConfig(configPath, config);
-}
-
-/** Replace all secret values in config with placeholders. */
-export async function scrubKeys(configPath: string, secretMap: SecretMap): Promise<void> {
-  let config = await readConfig(configPath);
-  for (const entry of secretMap) {
-    const value = getByPath(config, entry.configPath);
-    if (value !== undefined && value !== KEYCHAIN_PLACEHOLDER) {
-      config = setByPath(config, entry.configPath, KEYCHAIN_PLACEHOLDER);
-    }
-  }
-  await writeConfig(configPath, config);
-}
-
-/** Check whether all expected keys exist in the backend. */
 export async function checkKeys(secretMap: SecretMap, backend: SecretBackend): Promise<KeyCheckResult[]> {
   const results: KeyCheckResult[] = [];
   for (const entry of secretMap) {
@@ -116,4 +63,24 @@ export async function checkKeys(secretMap: SecretMap, backend: SecretBackend): P
     results.push({ keychainName: entry.keychainName, configPath: entry.configPath, exists: value !== null });
   }
   return results;
+}
+
+/**
+ * scrubKeys: REWRITTEN
+ * Writes ${OPENCLAW_SECURE_...} references to the config file.
+ */
+export async function scrubKeys(configPath: string, secretMap: SecretMap): Promise<void> {
+  let config = await readConfig(configPath);
+  let count = 0;
+
+  for (const entry of secretMap) {
+    // Generate Env Var Name
+    const envName = `OPENCLAW_SECURE_${entry.keychainName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+    // Force write the ${VAR} syntax
+    config = setByPath(config, entry.configPath, `\${${envName}}`);
+    count++;
+  }
+  
+  await writeConfig(configPath, config);
+  console.log(`  ✔ Config scrubbed: Injected \${VAR} references for ${count} keys`);
 }
