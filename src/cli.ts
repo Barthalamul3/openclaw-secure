@@ -98,16 +98,19 @@ program.command('start')
     
     // 1. Fetch keys & build env map
     const envUpdates: Record<string, string> = {};
+    const foundKeys: typeof DEFAULT_SECRET_MAP = [];
+
     for (const entry of DEFAULT_SECRET_MAP) {
       const val = await backend.get(entry.keychainName);
       if (val) {
         const envName = `OPENCLAW_SECURE_${entry.keychainName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
         envUpdates[envName] = val;
+        foundKeys.push(entry);
       }
     }
-    
+
     // 2. Scrub Config (Writes ${VAR} using our new logic)
-    await scrubKeys(configPath, DEFAULT_SECRET_MAP);
+    await scrubKeys(configPath, foundKeys);
 
     console.log(`  → Starting gateway...`);
     const child = spawn(DEFAULT_GATEWAY_COMMAND, {
@@ -115,10 +118,10 @@ program.command('start')
       shell: true,
       env: { ...process.env, ...envUpdates }
     });
-    
+
     console.log(`  → Waiting for gateway health (${timeout}ms timeout)...`);
     const healthy = await waitForHealth(18789, timeout);
-    
+
     if (healthy) {
       console.log('  ✔ Gateway is healthy');
     } else {
@@ -126,12 +129,12 @@ program.command('start')
       child.kill();
       process.exit(1);
     }
-    
+
     // Cleanup on exit: Ensures the file stays in ${VAR} state
     const cleanup = async () => {
       console.log('\nStopping gateway...');
       child.kill();
-      try { await scrubKeys(configPath, DEFAULT_SECRET_MAP); } catch {}
+      try { await scrubKeys(configPath, foundKeys); } catch {}
     };
     
     process.on('SIGINT', () => cleanup().then(() => process.exit(0)));
