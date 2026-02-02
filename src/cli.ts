@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createBackend } from './backends/index.js';
-import { scrubKeys, checkKeys, storeKeys } from './index.js';
+import { scrubKeys, checkKeys, storeKeys, updateConfigReferences } from './index.js';
 import {
   DEFAULT_CONFIG_PATH,
   DEFAULT_TIMEOUT_MS,
@@ -99,6 +99,7 @@ program.command('start')
     // 1. Fetch keys & build env map
     const envUpdates: Record<string, string> = {};
     const foundKeys: typeof DEFAULT_SECRET_MAP = [];
+    const missingKeys: typeof DEFAULT_SECRET_MAP = [];
 
     for (const entry of DEFAULT_SECRET_MAP) {
       const val = await backend.get(entry.keychainName);
@@ -106,11 +107,13 @@ program.command('start')
         const envName = `OPENCLAW_SECURE_${entry.keychainName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
         envUpdates[envName] = val;
         foundKeys.push(entry);
+      } else {
+        missingKeys.push(entry);
       }
     }
 
-    // 2. Scrub Config (Writes ${VAR} using our new logic)
-    await scrubKeys(configPath, foundKeys);
+    // 2. Scrub Config (Writes ${VAR} for found keys, placeholders for missing)
+    await updateConfigReferences(configPath, foundKeys, missingKeys);
 
     console.log(`  → Starting gateway...`);
     const child = spawn(DEFAULT_GATEWAY_COMMAND, {
@@ -130,11 +133,11 @@ program.command('start')
       process.exit(1);
     }
 
-    // Cleanup on exit: Ensures the file stays in ${VAR} state
+    // Cleanup on exit: Ensures consistency
     const cleanup = async () => {
       console.log('\nStopping gateway...');
       child.kill();
-      try { await scrubKeys(configPath, foundKeys); } catch {}
+      try { await updateConfigReferences(configPath, foundKeys, missingKeys); } catch {}
     };
     
     process.on('SIGINT', () => cleanup().then(() => process.exit(0)));

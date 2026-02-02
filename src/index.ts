@@ -2,6 +2,7 @@ import { readConfig, writeConfig } from './config.js';
 import { setByPath, getByPath } from './paths.js';
 import type { SecretMap, KeyCheckResult, StoreResult } from './types.js';
 import type { SecretBackend } from './backends/types.js';
+import { KEYCHAIN_PLACEHOLDER } from './constants.js';
 
 // Exports for other modules
 export {
@@ -80,7 +81,36 @@ export async function scrubKeys(configPath: string, secretMap: SecretMap): Promi
     config = setByPath(config, entry.configPath, `\${${envName}}`);
     count++;
   }
-  
+
   await writeConfig(configPath, config);
   console.log(`  ✔ Config scrubbed: Injected \${VAR} references for ${count} keys`);
+}
+
+/**
+ * Updates config with valid references for found keys and placeholders for missing ones.
+ */
+export async function updateConfigReferences(
+  configPath: string,
+  foundKeys: SecretMap,
+  missingKeys: SecretMap
+): Promise<void> {
+  let config = await readConfig(configPath);
+  let scrubbed = 0;
+  let restored = 0;
+
+  for (const entry of foundKeys) {
+    const envName = `OPENCLAW_SECURE_${entry.keychainName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+    config = setByPath(config, entry.configPath, `\${${envName}}`);
+    scrubbed++;
+  }
+
+  for (const entry of missingKeys) {
+    config = setByPath(config, entry.configPath, KEYCHAIN_PLACEHOLDER);
+    restored++;
+  }
+
+  await writeConfig(configPath, config);
+
+  if (scrubbed > 0) console.log(`  ✔ Injected \${VAR} references for ${scrubbed} keys`);
+  if (restored > 0) console.log(`  ✔ Restored placeholders for ${restored} missing keys`);
 }
