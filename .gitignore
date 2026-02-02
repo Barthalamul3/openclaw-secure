@@ -1,6 +1,18 @@
+# Dependencies and Builds
 node_modules/
 dist/
-*.tgz
+build/
+*.log
+
+# System & Environment
 .DS_Store
-.idea
-.claude
+.env
+
+# SECURITY: CRITICAL IGNORES
+# Never commit the runtime config (even though it's in RAM, just in case)
+openclaw-runtime.json
+# Never commit credentials or sessions
+*.gpg
+*.cred
+gpg_passphrase
+bw_session

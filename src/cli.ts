@@ -240,7 +240,7 @@ function waitForGateway(timeoutMs: number): Promise<void> {
     const start = Date.now();
     const check = () => {
       if (Date.now() - start > timeoutMs) { reject(new Error(`Gateway did not become healthy within ${timeoutMs}ms`)); return; }
-      fetch('http://127.0.0.1:3577/health')
+      fetch('http://127.0.0.1:18789/health')
         .then((res) => { if (res.ok) resolve(); else setTimeout(check, 500); })
         .catch(() => setTimeout(check, 500));
     };
