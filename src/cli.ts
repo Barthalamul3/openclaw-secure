@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createBackend } from './backends/index.js';
-import { scrubKeys, checkKeys, storeKeys, updateConfigReferences } from './index.js';
+import { checkKeys, storeKeys, updateConfigReferences } from './index.js';
 import {
   DEFAULT_CONFIG_PATH,
   DEFAULT_TIMEOUT_MS,
@@ -103,7 +103,7 @@ program.command('start')
 
     for (const entry of DEFAULT_SECRET_MAP) {
       const val = await backend.get(entry.keychainName);
-      if (val) {
+      if (val !== null) {
         const envName = `OPENCLAW_SECURE_${entry.keychainName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
         envUpdates[envName] = val;
         foundKeys.push(entry);
