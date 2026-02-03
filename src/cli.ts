@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createBackend } from './backends/index.js';
+import { run } from './commands/run.js';
 import { checkKeys, storeKeys, updateConfigReferences } from './index.js';
 import {
   DEFAULT_CONFIG_PATH,
@@ -150,5 +151,11 @@ program.command('start')
       });
     });
   });
+
+program.command('run <command...>')
+  .description('Run any command with secrets injected into environment variables')
+  .option('-b, --backend <name>', 'Secret backend')
+  .allowUnknownOption()
+  .action(run);
 
 program.parse(process.argv);
