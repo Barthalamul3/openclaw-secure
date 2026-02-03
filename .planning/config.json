@@ -1,0 +1,12 @@
+{
+  "mode": "interactive",
+  "depth": "standard",
+  "parallelization": true,
+  "gitTracking": true,
+  "workflowAgents": {
+    "research": true,
+    "planCheck": false,
+    "verifier": true
+  },
+  "modelProfile": "balanced"
+}
