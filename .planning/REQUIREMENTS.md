@@ -33,14 +33,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXEC-01 | TBD | Pending |
-| EXEC-02 | TBD | Pending |
-| EXEC-03 | TBD | Pending |
-| TTY-01 | TBD | Pending |
-| TTY-02 | TBD | Pending |
-| TTY-03 | TBD | Pending |
-| BOOT-01 | TBD | Pending |
-| BOOT-02 | TBD | Pending |
+| EXEC-01 | Phase 1 | Pending |
+| EXEC-02 | Phase 1 | Pending |
+| EXEC-03 | Phase 1 | Pending |
+| TTY-01 | Phase 2 | Pending |
+| TTY-02 | Phase 2 | Pending |
+| TTY-03 | Phase 2 | Pending |
+| BOOT-01 | Phase 3 | Pending |
+| BOOT-02 | Phase 3 | Pending |
 
 ---
 *Requirements defined: 2026-02-02*
