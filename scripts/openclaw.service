@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenClaw Secure Environment
+After=network.target
+
+[Service]
+Type=exec
+LoadCredential=gpg_passphrase:/home/earls/.openclaw/credentials/gpg_passphrase
+ExecStart=/home/earls/Documents/ClawdBrainVault/Projects/openclaw-secure/scripts/secure_openclaw_startup.sh
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

@@ -17,6 +17,7 @@ export const DEFAULT_SECRET_MAP: SecretMap = [
   { configPath: 'plugins.entries.carapace.config.promptIntelApiKey', keychainName: 'carapace-prompt-intel-api-key' },
   { configPath: 'plugins.entries.carapace.config.llmApiKey', keychainName: 'carapace-llm-api-key' },
   { configPath: 'channels.discord.token', keychainName: 'discord-bot-token' },
+  { configPath: 'channels.telegram.botToken', keychainName: 'telegram-bot-token' },
 ];
 
 export function serviceName(keychainName: string): string {
